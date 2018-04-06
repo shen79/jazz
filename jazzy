@@ -1,0 +1,115 @@
+#!/usr/bin/python
+
+
+
+import sys, os, binascii, subprocess, getopt, shlex, signal
+from sjf import *
+
+def signal_handler(sig, frame):
+	print("\ncaught signal " + str(sig) + ", exiting...")
+	sys.exit(0)
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGUSR1, signal_handler)
+
+def _config(cfgfile, cl_args):
+	msg("FuzzFile: " + cfgfile)
+	section = 'main'
+	with open(cfgfile) as f:
+		lines = f.readlines()
+	d = {}
+	for line in lines:
+		line = line.strip()
+		if line == '' or line[0] in ['#',';']: continue
+		if line[0] == '[' and line[-1] == ']':
+			section = line[1:-1]
+		else:
+			if section == 'main':
+				val = shlex.split(line)
+				obj = val.pop(0)
+				if val[0] == '$':
+					val = cl_args[int(val[1:])]
+				if obj in ['command']:
+					d[obj] = val
+				else:
+					d[obj] = ' '.join(val)
+				
+			elif section == 'fuzzdata':
+				if section not in d and section is not 'undef':
+					d[section] = { 'fields': [] }
+				opts = shlex.split(line)
+				exp_val = False
+				val_for = ''
+				field_data = {
+					'variable': False,
+					'datatype': 'string',
+					'name': 'anonymous',
+					'value': None
+				}
+				# TODO prefix suffix
+				for idx, op in enumerate(opts):
+					if exp_val:
+						if op[0:5] == '$argv':
+							op = cl_args[int(op[5:])]
+						field_data[val_for] = op
+						exp_val = False
+						val_for = ''
+					elif op in ['-v','-var','-variable']:	field_data['variable'] = True
+					elif op in ['-s','-st','-static']:		field_data['variable'] = False
+					elif op in ['-b','-bin','-binary']:		field_data['datatype'] = 'binary'		#d[section]['fields'][idx].append([ftype, binascii.unhexlify(fdefval)])
+					elif op in ['-s','-str','-string']:		field_data['datatype'] = 'string'		#d[section]['fields'][idx].append([fmode, ftype, eval(fdefval)])
+					elif op in ['-n','-name']:				exp_val, val_for = True, 'name'
+					elif op in ['-v','-val', '-value']:		exp_val, val_for = True, 'value'
+					elif op in ['-pfx','-prefix']:			exp_val, val_for = True, 'prefix'
+					elif op in ['-sfx','-suffix']:			exp_val, val_for = True, 'suffix'
+					else:
+						die('unknown option: ' + op)
+				if field_data['datatype'] == 'binary':
+					field_data['value'] = binascii.unhexlify(field_data['value'])
+					field_data['datatype'] = 'string'
+				d[section]['fields'].append(field_data)
+# TODO
+			else:
+				var, val = line.split(' ', 2)
+				d[section][var] = val
+	return d
+
+
+
+def _config_section_fuzzdata():
+	pass
+
+
+def main(argv):
+	# TODO: verbose logging
+	# -c <fuzzconfig>
+	# -r <testcase-id> replay testcase
+	# -s <signal> - stop fuzzing if debuggee returns with <signal> (numeric)
+
+	cfg_file = argv.pop(0)
+	cl_opts, cl_args = getopt.getopt(argv, 'r:s:')
+	cfg = _config(cfg_file, cl_args)
+	opts = {}
+	for cl_opt in cl_opts:
+		k = cl_opt[0]
+		v = cl_opt[1]
+		opts[k] = v
+	msg("cj.fuzz")
+	if '-s' in opts:
+		cfg['exit-on-signal'] = int(opts['-s'])
+	params = {
+		'cfg': cfg,
+		'env': {}, # for debugging
+#		'env': os.environ,
+		'opts': opts
+	}
+	executor.call(params)
+
+
+if __name__ == "__main__":
+	msg(SW_VERSION)
+	main(sys.argv[1:])
+
+
+
+
+

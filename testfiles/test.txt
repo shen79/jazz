@@ -1,0 +1,4 @@
+Dis just a plain
+textfile to test
+the file fuzzing
+method blah blah
