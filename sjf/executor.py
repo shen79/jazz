@@ -261,12 +261,14 @@ def _build_fuzzdata(params):
 		prefix, suffix = '', ''
 		if 'prefix' in field: prefix = field['prefix']
 		if 'suffix' in field: suffix = field['suffix']
-#		dump(idx)
+		#dump(fuzz_env)
 		if cfg['attack'] == 'env':
 			if idx == fuzz_field_idx:
-				fuzz_env.add({field['name']:prefix + pattern + suffix})
+				#fuzz_env.add({field['name']: prefix + pattern + suffix})
+				fuzz_env[field['name']] = prefix + pattern + suffix
 			else:
-				fuzz_env.add({field['name']: prefix + field['value'] + suffix})
+				#fuzz_env.add({field['name']: prefix + field['value'] + suffix})
+				fuzz_env[field['name']] = prefix + field['value'] + pattern + suffix
 		else:
 			if idx == fuzz_field_idx:
 				fuzz_data.append(prefix + pattern + suffix)
