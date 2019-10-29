@@ -34,8 +34,9 @@ def _exec(params):
 			conn['socket'].send(params['send'])
 		conn['socket'].close()
 		# TODO: check after testcase
-		proc.wait()
-		res['retcode'] = proc.returncode
+#		proc.wait()
+#		res['retcode'] = proc.returncode
+		res['retcode'] = 0
 # TCP client
 	elif params['cfg']['attack'] == 'tcpclient':
 		host, port = params['cfg']['listen'].split(':')
@@ -49,7 +50,7 @@ def _exec(params):
 # simple forkt - params, env, stdin
 	else:
 		sp = subprocess
-		proc = _popen(params['command'], env=params['env'])
+		proc = _popen(params['command'][0].split(' '), env=params['env'])
 		stdout, stderr = proc.communicate(input=params['stdin'])
 		proc.wait()
 		res['retcode'] = proc.returncode
@@ -201,8 +202,9 @@ def _fuzz(params):
 	for fuzz_field_idx in fuzz_fields:
 		fuzz_data = fuzz_default # not required for env
 		fuzz_env = fuzz_env_default
-		fuzz_field_name = cfg['fuzzdata']['fields'][idx]['name']
-		fuzz_field_datatype = cfg['fuzzdata']['fields'][idx]['datatype']
+		fuzz_field_name = cfg['fuzzdata']['fields'][fuzz_field_idx]['name']
+		
+		fuzz_field_datatype = cfg['fuzzdata']['fields'][fuzz_field_idx]['datatype']
 		dbg('fuzzing param field #%d name:%s type:%s ' % (fuzz_field_idx, fuzz_field_name, fuzz_field_datatype))
 # generators loop
 		for generator_id in generators['by-gid']:
